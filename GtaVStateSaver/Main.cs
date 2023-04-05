@@ -17,14 +17,6 @@ namespace GtaVStateSaver
     public class Main : Script
     {
         private const string SAVE_FILE = "scripts/GtaVStateSaver.bin";
-        private static readonly int[] PED_CONFIG_FLAGS = new int[]
-            {
-                32, 33, 52, 58, 60, 61, 62, 65, 66, 67, 69, 70, 71, 72, 73, 76, 78,
-                100, 104, 122, 125, 149, 166, 168, 170, 187,
-                223, 224, 253, 276, 281, 292,
-                301, 314, 331,
-                410
-            };
 
         public Main()
         {
@@ -92,8 +84,8 @@ namespace GtaVStateSaver
                     ReadWorld(reader);
                     ReadPlayer(reader, player);
 
-                    var isInVehicle = reader.ReadBoolean();
-                    if (isInVehicle)
+                    var isPlayerInVehicle = reader.ReadBoolean();
+                    if (isPlayerInVehicle)
                     {
                         var seatIndex = reader.ReadInt32();
                         var vehicle = SpawnVehicle(reader, (playerPed, seatIndex), false);
@@ -195,9 +187,6 @@ namespace GtaVStateSaver
             writer.Write(ped.MaxHealthFloat);
             writer.Write(ped.ArmorFloat);
 
-            foreach (var pedConfigFlag in PED_CONFIG_FLAGS)
-                writer.Write(ped.GetConfigFlag(pedConfigFlag));
-
             WritePedWeapons(writer, ped);
         }
 
@@ -211,7 +200,7 @@ namespace GtaVStateSaver
 
             if (ped == null)
             {
-                reader.BaseStream.Seek(48 + PED_CONFIG_FLAGS.Length, SeekOrigin.Current);
+                reader.BaseStream.Seek(48, SeekOrigin.Current);
                 SeekPedWeapons(reader);
                 return null;
             }
@@ -239,8 +228,8 @@ namespace GtaVStateSaver
 
             ped.Task.Wait(0);
 
-            foreach (var pedConfigFlag in PED_CONFIG_FLAGS)
-                ped.SetConfigFlag(pedConfigFlag, reader.ReadBoolean());
+            //foreach (var pedConfigFlag in PED_CONFIG_FLAGS)
+            //    ped.SetConfigFlag(pedConfigFlag, reader.ReadBoolean());
 
             ReadPedWeapons(reader, ped);
 
@@ -275,16 +264,12 @@ namespace GtaVStateSaver
             ped.MaxHealthFloat = reader.ReadSingle(); // 60
             ped.ArmorFloat = reader.ReadSingle(); // 64
 
-            foreach (var pedConfigFlag in PED_CONFIG_FLAGS)
-                ped.SetConfigFlag(pedConfigFlag, reader.ReadBoolean());
-
             ReadPedWeapons(reader, ped);
         }
 
         private void SeekPed(BinaryReader reader)
         {
             reader.BaseStream.Seek(64, SeekOrigin.Current);
-            reader.BaseStream.Seek(PED_CONFIG_FLAGS.Length, SeekOrigin.Current);
             SeekPedWeapons(reader);
         }
 
