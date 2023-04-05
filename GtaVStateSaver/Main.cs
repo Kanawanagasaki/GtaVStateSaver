@@ -51,7 +51,7 @@ namespace GtaVStateSaver
 
                     var vehicles = World.GetAllVehicles()
                         .Where(x => x != playerVehicle)
-                        .OrderBy(x => Vector3.DistanceSquared2D(x.Position, playerPed.Position))
+                        .OrderBy(x => x.IsOnScreen ? 0 : Vector3.DistanceSquared2D(x.Position, playerPed.Position))
                         .Take(20)
                         .ToArray();
                     writer.Write(vehicles.Length);
@@ -60,7 +60,7 @@ namespace GtaVStateSaver
 
                     var peds = World.GetAllPeds()
                         .Where(x => x != playerPed && !x.IsInVehicle())
-                        .OrderBy(x => Vector3.DistanceSquared2D(x.Position, playerPed.Position))
+                        .OrderBy(x => x.IsOnScreen ? 0 : Vector3.DistanceSquared2D(x.Position, playerPed.Position))
                         .Take(30)
                         .ToArray();
                     writer.Write(peds.Length);
@@ -228,9 +228,6 @@ namespace GtaVStateSaver
 
             ped.Task.Wait(0);
 
-            //foreach (var pedConfigFlag in PED_CONFIG_FLAGS)
-            //    ped.SetConfigFlag(pedConfigFlag, reader.ReadBoolean());
-
             ReadPedWeapons(reader, ped);
 
             return ped;
@@ -375,6 +372,7 @@ namespace GtaVStateSaver
             writer.Write(vehicle.HeliEngineHealth);
             writer.Write(vehicle.HeliMainRotorHealth);
             writer.Write(vehicle.HeliTailRotorHealth);
+            writer.Write(vehicle.HighGear);
             writer.Write(vehicle.IsConsideredDestroyed);
             writer.Write(vehicle.IsDriveable);
             writer.Write(vehicle.IsEngineRunning);
@@ -388,6 +386,7 @@ namespace GtaVStateSaver
             writer.Write((int)vehicle.LandingGearState);
             writer.Write((int)vehicle.LockStatus);
             writer.Write(vehicle.NeedsToBeHotwired);
+            writer.Write(vehicle.NextGear);
             writer.Write(vehicle.OilLevel);
             writer.Write(vehicle.PetrolTankHealth);
             writer.Write(vehicle.PreviouslyOwnedByPlayer);
@@ -459,7 +458,7 @@ namespace GtaVStateSaver
 
             if (vehicle == null)
             {
-                reader.BaseStream.Seek(190, SeekOrigin.Current);
+                reader.BaseStream.Seek(198, SeekOrigin.Current);
                 if (shouldReadMods)
                 {
                     reader.BaseStream.Seek(Enum.GetValues(typeof(VehicleNeonLight)).Length * 2, SeekOrigin.Current);
@@ -474,72 +473,74 @@ namespace GtaVStateSaver
                 return null;
             }
 
-            x = reader.ReadSingle(); // 4
-            y = reader.ReadSingle(); // 8
-            z = reader.ReadSingle(); // 12
+            x = reader.ReadSingle();
+            y = reader.ReadSingle();
+            z = reader.ReadSingle();
             vehicle.Velocity = new Vector3(x, y, z);
 
-            x = reader.ReadSingle(); // 16
-            y = reader.ReadSingle(); // 20
-            z = reader.ReadSingle(); // 24
+            x = reader.ReadSingle();
+            y = reader.ReadSingle();
+            z = reader.ReadSingle();
             vehicle.Rotation = new Vector3(x, y, z);
 
-            x = reader.ReadSingle(); // 28
-            y = reader.ReadSingle(); // 32
-            z = reader.ReadSingle(); // 36
+            x = reader.ReadSingle();
+            y = reader.ReadSingle();
+            z = reader.ReadSingle();
             vehicle.RotationVelocity = new Vector3(x, y, z);
 
-            vehicle.AlarmTimeLeft = reader.ReadInt32(); // 40
-            vehicle.AreHighBeamsOn = reader.ReadBoolean(); // 41
-            vehicle.AreLightsOn = reader.ReadBoolean(); // 42
-            vehicle.BodyHealth = reader.ReadSingle(); // 46
-            vehicle.Clutch = reader.ReadSingle(); // 50
-            vehicle.CurrentGear = reader.ReadInt32(); // 54
-            vehicle.CurrentRPM = reader.ReadInt32(); // 58
-            vehicle.DirtLevel = reader.ReadSingle(); // 62
-            vehicle.EngineHealth = reader.ReadSingle(); // 66
-            vehicle.FuelLevel = reader.ReadSingle(); // 70
-            vehicle.HealthFloat = reader.ReadSingle(); // 74
-            vehicle.HeliBladesSpeed = reader.ReadSingle(); // 78
-            vehicle.HeliEngineHealth = reader.ReadSingle(); // 82
-            vehicle.HeliMainRotorHealth = reader.ReadSingle(); // 86
-            vehicle.HeliTailRotorHealth = reader.ReadSingle(); // 90
-            vehicle.IsConsideredDestroyed = reader.ReadBoolean(); // 91
-            vehicle.IsDriveable = reader.ReadBoolean(); // 92
-            vehicle.IsEngineRunning = reader.ReadBoolean(); // 93
-            vehicle.IsLeftHeadLightBroken = reader.ReadBoolean(); // 94
-            vehicle.IsRightHeadLightBroken = reader.ReadBoolean(); // 95
-            vehicle.IsRocketBoostActive = reader.ReadBoolean(); // 96
-            vehicle.IsSearchLightOn = reader.ReadBoolean(); // 97
-            vehicle.IsSirenActive = reader.ReadBoolean(); // 98
-            vehicle.IsStolen = reader.ReadBoolean(); // 99
-            vehicle.IsTaxiLightOn = reader.ReadBoolean(); // 100
-            vehicle.LandingGearState = (VehicleLandingGearState)reader.ReadInt32(); // 104
-            vehicle.LockStatus = (VehicleLockStatus)reader.ReadInt32(); // 108
-            vehicle.NeedsToBeHotwired = reader.ReadBoolean(); // 109
-            vehicle.OilLevel = reader.ReadSingle(); // 113
-            vehicle.PetrolTankHealth = reader.ReadSingle(); // 117
-            vehicle.PreviouslyOwnedByPlayer = reader.ReadBoolean(); // 118
-            vehicle.RoofState = (VehicleRoofState)reader.ReadInt32(); // 122
-            vehicle.SteeringAngle = reader.ReadSingle(); // 126
-            vehicle.SteeringScale = reader.ReadSingle(); // 130
+            vehicle.AlarmTimeLeft = reader.ReadInt32();
+            vehicle.AreHighBeamsOn = reader.ReadBoolean();
+            vehicle.AreLightsOn = reader.ReadBoolean();
+            vehicle.BodyHealth = reader.ReadSingle();
+            vehicle.Clutch = reader.ReadSingle();
+            vehicle.CurrentGear = reader.ReadInt32();
+            vehicle.CurrentRPM = reader.ReadInt32();
+            vehicle.DirtLevel = reader.ReadSingle();
+            vehicle.EngineHealth = reader.ReadSingle();
+            vehicle.FuelLevel = reader.ReadSingle();
+            vehicle.HealthFloat = reader.ReadSingle();
+            vehicle.HeliBladesSpeed = reader.ReadSingle();
+            vehicle.HeliEngineHealth = reader.ReadSingle();
+            vehicle.HeliMainRotorHealth = reader.ReadSingle();
+            vehicle.HeliTailRotorHealth = reader.ReadSingle();
+            vehicle.HighGear = reader.ReadInt32();
+            vehicle.IsConsideredDestroyed = reader.ReadBoolean();
+            vehicle.IsDriveable = reader.ReadBoolean();
+            vehicle.IsEngineRunning = reader.ReadBoolean();
+            vehicle.IsLeftHeadLightBroken = reader.ReadBoolean();
+            vehicle.IsRightHeadLightBroken = reader.ReadBoolean();
+            vehicle.IsRocketBoostActive = reader.ReadBoolean();
+            vehicle.IsSearchLightOn = reader.ReadBoolean();
+            vehicle.IsSirenActive = reader.ReadBoolean();
+            vehicle.IsStolen = reader.ReadBoolean();
+            vehicle.IsTaxiLightOn = reader.ReadBoolean();
+            vehicle.LandingGearState = (VehicleLandingGearState)reader.ReadInt32();
+            vehicle.LockStatus = (VehicleLockStatus)reader.ReadInt32();
+            vehicle.NeedsToBeHotwired = reader.ReadBoolean();
+            vehicle.NextGear = reader.ReadInt32();
+            vehicle.OilLevel = reader.ReadSingle();
+            vehicle.PetrolTankHealth = reader.ReadSingle();
+            vehicle.PreviouslyOwnedByPlayer = reader.ReadBoolean();
+            vehicle.RoofState = (VehicleRoofState)reader.ReadInt32();
+            vehicle.SteeringAngle = reader.ReadSingle();
+            vehicle.SteeringScale = reader.ReadSingle();
 
-            vehicle.Mods.ColorCombination = reader.ReadInt32(); // 134
-            vehicle.Mods.CustomPrimaryColor = Color.FromArgb(reader.ReadInt32()); // 138
-            vehicle.Mods.CustomSecondaryColor = Color.FromArgb(reader.ReadInt32()); // 142
-            vehicle.Mods.DashboardColor = (VehicleColor)reader.ReadInt32(); // 146
+            vehicle.Mods.ColorCombination = reader.ReadInt32();
+            vehicle.Mods.CustomPrimaryColor = Color.FromArgb(reader.ReadInt32());
+            vehicle.Mods.CustomSecondaryColor = Color.FromArgb(reader.ReadInt32());
+            vehicle.Mods.DashboardColor = (VehicleColor)reader.ReadInt32();
             vehicle.Mods.LicensePlate = lincensePlate;
-            vehicle.Mods.LicensePlateStyle = (LicensePlateStyle)reader.ReadInt32(); // 150
-            vehicle.Mods.Livery = reader.ReadInt32(); // 154
-            vehicle.Mods.NeonLightsColor = Color.FromArgb(reader.ReadInt32()); // 158
-            vehicle.Mods.PearlescentColor = (VehicleColor)reader.ReadInt32(); // 162
-            vehicle.Mods.PrimaryColor = (VehicleColor)reader.ReadInt32(); // 166
-            vehicle.Mods.RimColor = (VehicleColor)reader.ReadInt32(); // 170
-            vehicle.Mods.SecondaryColor = (VehicleColor)reader.ReadInt32(); // 174
-            vehicle.Mods.TireSmokeColor = Color.FromArgb(reader.ReadInt32()); // 178
-            vehicle.Mods.TrimColor = (VehicleColor)reader.ReadInt32(); // 182
-            vehicle.Mods.WheelType = (VehicleWheelType)reader.ReadInt32(); // 186
-            vehicle.Mods.WindowTint = (VehicleWindowTint)reader.ReadInt32(); // 190
+            vehicle.Mods.LicensePlateStyle = (LicensePlateStyle)reader.ReadInt32();
+            vehicle.Mods.Livery = reader.ReadInt32();
+            vehicle.Mods.NeonLightsColor = Color.FromArgb(reader.ReadInt32());
+            vehicle.Mods.PearlescentColor = (VehicleColor)reader.ReadInt32();
+            vehicle.Mods.PrimaryColor = (VehicleColor)reader.ReadInt32();
+            vehicle.Mods.RimColor = (VehicleColor)reader.ReadInt32();
+            vehicle.Mods.SecondaryColor = (VehicleColor)reader.ReadInt32();
+            vehicle.Mods.TireSmokeColor = Color.FromArgb(reader.ReadInt32());
+            vehicle.Mods.TrimColor = (VehicleColor)reader.ReadInt32();
+            vehicle.Mods.WheelType = (VehicleWheelType)reader.ReadInt32();
+            vehicle.Mods.WindowTint = (VehicleWindowTint)reader.ReadInt32();
 
             if (shouldReadMods)
             {
