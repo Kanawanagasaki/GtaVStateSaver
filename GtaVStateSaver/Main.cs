@@ -124,6 +124,7 @@ namespace GtaVStateSaver
             writer.Write((int)World.NextWeather);
             writer.Write(World.CurrentDate.ToBinary());
             writer.Write(World.CurrentTimeOfDay.TotalMilliseconds);
+            writer.Write(World.WaypointBlip != null);
             writer.Write(World.WaypointPosition.X);
             writer.Write(World.WaypointPosition.Y);
             writer.Write(World.WaypointPosition.Z);
@@ -135,10 +136,14 @@ namespace GtaVStateSaver
             World.NextWeather = (Weather)reader.ReadInt32();
             World.CurrentDate = DateTime.FromBinary(reader.ReadInt64());
             World.CurrentTimeOfDay = TimeSpan.FromMilliseconds(reader.ReadDouble());
+            var isWaypointSet = reader.ReadBoolean();
             var x = reader.ReadSingle();
             var y = reader.ReadSingle();
             var z = reader.ReadSingle();
-            World.WaypointPosition = new Vector3(x, y, z);
+            if (isWaypointSet)
+                World.WaypointPosition = new Vector3(x, y, z);
+            else
+                World.RemoveWaypoint();
         }
 
         private void WritePlayer(BinaryWriter writer, Player player)
