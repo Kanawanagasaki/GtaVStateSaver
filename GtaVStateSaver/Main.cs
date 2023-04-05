@@ -78,6 +78,9 @@ namespace GtaVStateSaver
             }
             else
             {
+                if (!File.Exists(SAVE_FILE))
+                    return;
+
                 foreach (var ped in World.GetAllPeds())
                     ped.Delete();
                 foreach (var vehicle in World.GetAllVehicles())
