@@ -183,9 +183,41 @@ namespace GtaVStateSaver
             writer.Write(ped.RotationVelocity.Y);
             writer.Write(ped.RotationVelocity.Z);
 
-            writer.Write(ped.HealthFloat);
-            writer.Write(ped.MaxHealthFloat);
+            writer.Write(ped.Accuracy);
             writer.Write(ped.ArmorFloat);
+            writer.Write(ped.CanBeTargetted);
+            writer.Write(ped.CanFlyThroughWindscreen);
+            writer.Write(ped.CanRagdoll);
+            writer.Write(ped.CanSufferCriticalHits);
+            writer.Write(ped.CanWrithe);
+            writer.Write(ped.DropsEquippedWeaponOnDeath);
+            writer.Write(ped.FatalInjuryHealthThreshold);
+            writer.Write((uint)ped.FiringPattern);
+            writer.Write(ped.HealthFloat);
+            writer.Write(ped.HearingRange);
+            writer.Write(ped.InjuryHealthThreshold);
+            writer.Write(ped.IsDucking);
+            writer.Write(ped.IsInvincible);
+            writer.Write(ped.IsOnlyDamagedByPlayer);
+            writer.Write(ped.MaxHealthFloat);
+            writer.Write(ped.Money);
+            writer.Write((int)ped.PopulationType);
+            writer.Write(ped.SeeingRange);
+            writer.Write(ped.Sweat);
+            writer.Write(ped.VisualFieldCenterAngle);
+            writer.Write(ped.VisualFieldMaxAngle);
+            writer.Write(ped.VisualFieldMaxElevationAngle);
+            writer.Write(ped.VisualFieldMinAngle);
+            writer.Write(ped.VisualFieldMinElevationAngle);
+            writer.Write(ped.VisualFieldPeripheralRange);
+
+            var components = ped.Style.GetAllComponents();
+            writer.Write(components.Length);
+            foreach (var component in components)
+            {
+                writer.Write(component.Index);
+                writer.Write(component.TextureIndex);
+            }
 
             WritePedWeapons(writer, ped);
         }
@@ -222,9 +254,42 @@ namespace GtaVStateSaver
             z = reader.ReadSingle();
             ped.RotationVelocity = new Vector3(x, y, z);
 
-            ped.HealthFloat = reader.ReadSingle();
-            ped.MaxHealthFloat = reader.ReadSingle();
-            ped.ArmorFloat = reader.ReadSingle();
+            ped.Accuracy = reader.ReadInt32();
+            ped.ArmorFloat = reader.ReadInt32();
+            ped.CanBeTargetted = reader.ReadBoolean();
+            ped.CanFlyThroughWindscreen = reader.ReadBoolean();
+            ped.CanRagdoll = reader.ReadBoolean();
+            ped.CanSufferCriticalHits = reader.ReadBoolean();
+            ped.CanWrithe = reader.ReadBoolean();
+            ped.DropsEquippedWeaponOnDeath = reader.ReadBoolean();
+            ped.FatalInjuryHealthThreshold = reader.ReadInt32();
+            ped.FiringPattern = (FiringPattern)reader.ReadUInt32();
+            ped.HealthFloat = reader.ReadInt32();
+            ped.HearingRange = reader.ReadInt32();
+            ped.InjuryHealthThreshold = reader.ReadInt32();
+            ped.IsDucking = reader.ReadBoolean();
+            ped.IsInvincible = reader.ReadBoolean();
+            ped.IsOnlyDamagedByPlayer = reader.ReadBoolean();
+            ped.MaxHealthFloat = reader.ReadInt32();
+            ped.Money = reader.ReadInt32();
+            ped.PopulationType = (EntityPopulationType)reader.ReadInt32();
+            ped.SeeingRange = reader.ReadInt32();
+            ped.Sweat = reader.ReadInt32();
+            ped.VisualFieldCenterAngle = reader.ReadInt32();
+            ped.VisualFieldMaxAngle = reader.ReadInt32();
+            ped.VisualFieldMaxElevationAngle = reader.ReadInt32();
+            ped.VisualFieldMinAngle = reader.ReadInt32();
+            ped.VisualFieldMinElevationAngle = reader.ReadInt32();
+            ped.VisualFieldPeripheralRange = reader.ReadInt32();
+
+            var componentsAmount = reader.ReadInt32();
+            var components = ped.Style.GetAllComponents();
+            for (int i = 0; i < componentsAmount && i < components.Length; i++)
+            {
+                var index = reader.ReadInt32();
+                var textureIndex = reader.ReadInt32();
+                components[i].SetVariation(index, textureIndex);
+            }
 
             ped.Task.Wait(0);
 
@@ -235,38 +300,74 @@ namespace GtaVStateSaver
 
         private void ReadPed(BinaryReader reader, Ped ped)
         {
-            var _ = reader.ReadInt32(); // 4
+            var _ = reader.ReadInt32();
 
-            var x = reader.ReadSingle(); // 8
-            var y = reader.ReadSingle(); // 12
-            var z = reader.ReadSingle(); // 16
+            var x = reader.ReadSingle();
+            var y = reader.ReadSingle();
+            var z = reader.ReadSingle();
             ped.PositionNoOffset = new Vector3(x, y, z);
 
-            x = reader.ReadSingle(); // 20
-            y = reader.ReadSingle(); // 24
-            z = reader.ReadSingle(); // 28
+            x = reader.ReadSingle();
+            y = reader.ReadSingle();
+            z = reader.ReadSingle();
             ped.Velocity = new Vector3(x, y, z);
 
-            x = reader.ReadSingle(); // 32
-            y = reader.ReadSingle(); // 36
-            z = reader.ReadSingle(); // 40
+            x = reader.ReadSingle();
+            y = reader.ReadSingle();
+            z = reader.ReadSingle();
             ped.Rotation = new Vector3(x, y, z);
 
-            x = reader.ReadSingle(); // 44
-            y = reader.ReadSingle(); // 48
-            z = reader.ReadSingle(); // 52
+            x = reader.ReadSingle();
+            y = reader.ReadSingle();
+            z = reader.ReadSingle();
             ped.RotationVelocity = new Vector3(x, y, z);
 
-            ped.HealthFloat = reader.ReadSingle(); // 56
-            ped.MaxHealthFloat = reader.ReadSingle(); // 60
-            ped.ArmorFloat = reader.ReadSingle(); // 64
+            ped.Accuracy = reader.ReadInt32();
+            ped.ArmorFloat = reader.ReadInt32();
+            ped.CanBeTargetted = reader.ReadBoolean();
+            ped.CanFlyThroughWindscreen = reader.ReadBoolean();
+            ped.CanRagdoll = reader.ReadBoolean();
+            ped.CanSufferCriticalHits = reader.ReadBoolean();
+            ped.CanWrithe = reader.ReadBoolean();
+            ped.DropsEquippedWeaponOnDeath = reader.ReadBoolean();
+            ped.FatalInjuryHealthThreshold = reader.ReadInt32();
+            ped.FiringPattern = (FiringPattern)reader.ReadUInt32();
+            ped.HealthFloat = reader.ReadInt32();
+            ped.HearingRange = reader.ReadInt32();
+            ped.InjuryHealthThreshold = reader.ReadInt32();
+            ped.IsDucking = reader.ReadBoolean();
+            ped.IsInvincible = reader.ReadBoolean();
+            ped.IsOnlyDamagedByPlayer = reader.ReadBoolean();
+            ped.MaxHealthFloat = reader.ReadInt32();
+            ped.Money = reader.ReadInt32();
+            ped.PopulationType = (EntityPopulationType)reader.ReadInt32();
+            ped.SeeingRange = reader.ReadInt32();
+            ped.Sweat = reader.ReadInt32();
+            ped.VisualFieldCenterAngle = reader.ReadInt32();
+            ped.VisualFieldMaxAngle = reader.ReadInt32();
+            ped.VisualFieldMaxElevationAngle = reader.ReadInt32();
+            ped.VisualFieldMinAngle = reader.ReadInt32();
+            ped.VisualFieldMinElevationAngle = reader.ReadInt32();
+            ped.VisualFieldPeripheralRange = reader.ReadInt32();
+
+            var componentsAmount = reader.ReadInt32();
+            var components = ped.Style.GetAllComponents();
+            for (int i = 0; i < componentsAmount; i++)
+            {
+                var index = reader.ReadInt32();
+                var textureIndex = reader.ReadInt32();
+                if (i < components.Length)
+                    components[i].SetVariation(index, textureIndex);
+            }
 
             ReadPedWeapons(reader, ped);
         }
 
         private void SeekPed(BinaryReader reader)
         {
-            reader.BaseStream.Seek(64, SeekOrigin.Current);
+            reader.BaseStream.Seek(133, SeekOrigin.Current);
+            var componentsAmount = reader.ReadInt32();
+            reader.BaseStream.Seek(componentsAmount * 8, SeekOrigin.Current);
             SeekPedWeapons(reader);
         }
 
