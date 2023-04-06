@@ -51,7 +51,7 @@ namespace GtaVStateSaver
 
                     var vehicles = World.GetAllVehicles()
                         .Where(x => x != playerVehicle)
-                        .OrderBy(x => x.IsOnScreen ? 0 : Vector3.DistanceSquared2D(x.Position, playerPed.Position))
+                        .OrderBy(x => Vector3.DistanceSquared2D(x.Position, playerPed.Position))
                         .Take(20)
                         .ToArray();
                     writer.Write(vehicles.Length);
@@ -60,7 +60,7 @@ namespace GtaVStateSaver
 
                     var peds = World.GetAllPeds()
                         .Where(x => x != playerPed && !x.IsInVehicle())
-                        .OrderBy(x => x.IsOnScreen ? 0 : Vector3.DistanceSquared2D(x.Position, playerPed.Position))
+                        .OrderBy(x => Vector3.DistanceSquared2D(x.Position, playerPed.Position))
                         .Take(30)
                         .ToArray();
                     writer.Write(peds.Length);
@@ -88,7 +88,7 @@ namespace GtaVStateSaver
                     if (isPlayerInVehicle)
                     {
                         var seatIndex = reader.ReadInt32();
-                        var vehicle = SpawnVehicle(reader, (playerPed, seatIndex), false);
+                        var vehicle = ReadVehicle(reader, (playerPed, seatIndex), false);
                         if (vehicle != null)
                             playerPed.SetIntoVehicle(vehicle, (VehicleSeat)seatIndex);
                     }
@@ -97,12 +97,12 @@ namespace GtaVStateSaver
 
                     var vehiclesAmount = reader.ReadInt32();
                     for (int i = 0; i < vehiclesAmount; i++)
-                        SpawnVehicle(reader);
+                        ReadVehicle(reader);
 
                     var pedsAmount = reader.ReadInt32();
                     for (int i = 0; i < pedsAmount; i++)
                     {
-                        var ped = SpawnPed(reader);
+                        var ped = ReadPed(reader);
                         if (ped != null)
                             ped.MarkAsNoLongerNeeded();
                     }
@@ -222,13 +222,15 @@ namespace GtaVStateSaver
             WritePedWeapons(writer, ped);
         }
 
-        private Ped SpawnPed(BinaryReader reader)
+        private Ped ReadPed(BinaryReader reader, Ped ped = null)
         {
             var model = reader.ReadInt32();
             var x = reader.ReadSingle();
             var y = reader.ReadSingle();
             var z = reader.ReadSingle();
-            var ped = World.CreatePed(model, new Vector3(x, y, z));
+
+            if (ped == null)
+                ped = World.CreatePed(model, new Vector3(x, y, z));
 
             if (ped == null)
             {
@@ -296,71 +298,6 @@ namespace GtaVStateSaver
             ReadPedWeapons(reader, ped);
 
             return ped;
-        }
-
-        private void ReadPed(BinaryReader reader, Ped ped)
-        {
-            var _ = reader.ReadInt32();
-
-            var x = reader.ReadSingle();
-            var y = reader.ReadSingle();
-            var z = reader.ReadSingle();
-            ped.PositionNoOffset = new Vector3(x, y, z);
-
-            x = reader.ReadSingle();
-            y = reader.ReadSingle();
-            z = reader.ReadSingle();
-            ped.Velocity = new Vector3(x, y, z);
-
-            x = reader.ReadSingle();
-            y = reader.ReadSingle();
-            z = reader.ReadSingle();
-            ped.Rotation = new Vector3(x, y, z);
-
-            x = reader.ReadSingle();
-            y = reader.ReadSingle();
-            z = reader.ReadSingle();
-            ped.RotationVelocity = new Vector3(x, y, z);
-
-            ped.Accuracy = reader.ReadInt32();
-            ped.ArmorFloat = reader.ReadInt32();
-            ped.CanBeTargetted = reader.ReadBoolean();
-            ped.CanFlyThroughWindscreen = reader.ReadBoolean();
-            ped.CanRagdoll = reader.ReadBoolean();
-            ped.CanSufferCriticalHits = reader.ReadBoolean();
-            ped.CanWrithe = reader.ReadBoolean();
-            ped.DropsEquippedWeaponOnDeath = reader.ReadBoolean();
-            ped.FatalInjuryHealthThreshold = reader.ReadInt32();
-            ped.FiringPattern = (FiringPattern)reader.ReadUInt32();
-            ped.HealthFloat = reader.ReadInt32();
-            ped.HearingRange = reader.ReadInt32();
-            ped.InjuryHealthThreshold = reader.ReadInt32();
-            ped.IsDucking = reader.ReadBoolean();
-            ped.IsInvincible = reader.ReadBoolean();
-            ped.IsOnlyDamagedByPlayer = reader.ReadBoolean();
-            ped.MaxHealthFloat = reader.ReadInt32();
-            ped.Money = reader.ReadInt32();
-            ped.PopulationType = (EntityPopulationType)reader.ReadInt32();
-            ped.SeeingRange = reader.ReadInt32();
-            ped.Sweat = reader.ReadInt32();
-            ped.VisualFieldCenterAngle = reader.ReadInt32();
-            ped.VisualFieldMaxAngle = reader.ReadInt32();
-            ped.VisualFieldMaxElevationAngle = reader.ReadInt32();
-            ped.VisualFieldMinAngle = reader.ReadInt32();
-            ped.VisualFieldMinElevationAngle = reader.ReadInt32();
-            ped.VisualFieldPeripheralRange = reader.ReadInt32();
-
-            var componentsAmount = reader.ReadInt32();
-            var components = ped.Style.GetAllComponents();
-            for (int i = 0; i < componentsAmount; i++)
-            {
-                var index = reader.ReadInt32();
-                var textureIndex = reader.ReadInt32();
-                if (i < components.Length)
-                    components[i].SetVariation(index, textureIndex);
-            }
-
-            ReadPedWeapons(reader, ped);
         }
 
         private void SeekPed(BinaryReader reader)
@@ -536,7 +473,7 @@ namespace GtaVStateSaver
             }
         }
 
-        private Vehicle SpawnVehicle(BinaryReader reader, (Ped ped, int index)? playerSeat = null, bool markOccupants = true)
+        private Vehicle ReadVehicle(BinaryReader reader, (Ped ped, int index)? playerSeat = null, bool markOccupants = true)
         {
             var model = reader.ReadInt32();
             var x = reader.ReadSingle();
@@ -667,21 +604,24 @@ namespace GtaVStateSaver
 
             for (int i = 0; i < occupantsAmount; i++)
             {
-                var seatIndex = reader.ReadInt32();
+                var seatInt = reader.ReadInt32();
+                var seatIndex = (VehicleSeat)seatInt;
                 Ped ped;
-                if (playerSeat.HasValue && playerSeat.Value.index == seatIndex)
+                if (playerSeat.HasValue && playerSeat.Value.index == seatInt)
                 {
                     ped = playerSeat.Value.ped;
                     ReadPed(reader, ped);
                 }
                 else
-                    ped = SpawnPed(reader);
-                if (ped != null)
                 {
-                    ped.SetIntoVehicle(vehicle, (VehicleSeat)seatIndex);
-                    if (markOccupants)
-                        ped.MarkAsNoLongerNeeded();
+                    ped = ReadPed(reader);
+                    if (seatIndex == VehicleSeat.Driver)
+                        ped.SetIntoVehicle(vehicle, seatIndex);
+                    else
+                        ped.Task.WarpIntoVehicle(vehicle, seatIndex);
                 }
+                if (ped != null && markOccupants)
+                    ped.MarkAsNoLongerNeeded();
             }
 
             return vehicle;
