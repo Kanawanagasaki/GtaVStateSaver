@@ -44,7 +44,7 @@ namespace GtaVStateSaver
                     if (playerVehicle != null)
                     {
                         writer.Write((int)playerPed.SeatIndex);
-                        WriteVehicle(writer, playerVehicle, true);
+                        WriteVehicle(writer, playerVehicle);
                     }
                     else
                         WritePed(writer, playerPed);
@@ -56,7 +56,7 @@ namespace GtaVStateSaver
                         .ToArray();
                     writer.Write(vehicles.Length);
                     foreach (var vehicle in vehicles)
-                        WriteVehicle(writer, vehicle, vehicle == player.LastVehicle);
+                        WriteVehicle(writer, vehicle);
 
                     var peds = World.GetAllPeds()
                         .Where(x => x != playerPed && !x.IsInVehicle())
@@ -320,7 +320,7 @@ namespace GtaVStateSaver
             reader.BaseStream.Seek(weaponsAmount * 13, SeekOrigin.Current);
         }
 
-        private void WriteVehicle(BinaryWriter writer, Vehicle vehicle, bool shouldSaveMods)
+        private void WriteVehicle(BinaryWriter writer, Vehicle vehicle)
         {
             // HEADER
 
@@ -332,7 +332,6 @@ namespace GtaVStateSaver
 
             writer.Write(vehicle.Heading);
 
-            writer.Write(shouldSaveMods);
             var doors = vehicle.Doors.ToArray();
             writer.Write(doors.Length);
             var occupants = vehicle.Occupants;
@@ -363,7 +362,6 @@ namespace GtaVStateSaver
             writer.Write(vehicle.BodyHealth);
             writer.Write(vehicle.Clutch);
             writer.Write(vehicle.CurrentGear);
-            writer.Write(vehicle.CurrentRPM);
             writer.Write(vehicle.DirtLevel);
             writer.Write(vehicle.EngineHealth);
             writer.Write(vehicle.FuelLevel);
@@ -410,19 +408,16 @@ namespace GtaVStateSaver
             writer.Write((int)vehicle.Mods.WheelType);
             writer.Write((int)vehicle.Mods.WindowTint);
 
-            if (shouldSaveMods)
+            foreach (VehicleNeonLight neonLight in Enum.GetValues(typeof(VehicleNeonLight)))
             {
-                foreach (VehicleNeonLight neonLight in Enum.GetValues(typeof(VehicleNeonLight)))
-                {
-                    writer.Write(vehicle.Mods.HasNeonLight(neonLight));
-                    writer.Write(vehicle.Mods.IsNeonLightsOn(neonLight));
-                }
+                writer.Write(vehicle.Mods.HasNeonLight(neonLight));
+                writer.Write(vehicle.Mods.IsNeonLightsOn(neonLight));
+            }
 
-                foreach (VehicleModType modType in Enum.GetValues(typeof(VehicleModType)))
-                {
-                    writer.Write(vehicle.Mods[modType].Variation);
-                    writer.Write(vehicle.Mods[modType].Index);
-                }
+            foreach (VehicleModType modType in Enum.GetValues(typeof(VehicleModType)))
+            {
+                writer.Write(vehicle.Mods[modType].Variation);
+                writer.Write(vehicle.Mods[modType].Index);
             }
 
             foreach (var door in doors)
@@ -449,7 +444,6 @@ namespace GtaVStateSaver
             var heading = reader.ReadSingle();
             var vehicle = World.CreateVehicle(model, new Vector3(x, y, z), heading);
 
-            var shouldReadMods = reader.ReadBoolean();
             var doorsAmount = reader.ReadInt32();
             var occupantsAmount = reader.ReadInt32();
             var licensePlateLength = reader.ReadInt32();
@@ -458,12 +452,9 @@ namespace GtaVStateSaver
 
             if (vehicle == null)
             {
-                reader.BaseStream.Seek(198, SeekOrigin.Current);
-                if (shouldReadMods)
-                {
-                    reader.BaseStream.Seek(Enum.GetValues(typeof(VehicleNeonLight)).Length * 2, SeekOrigin.Current);
-                    reader.BaseStream.Seek(Enum.GetValues(typeof(VehicleModType)).Length * 5, SeekOrigin.Current);
-                }
+                reader.BaseStream.Seek(194, SeekOrigin.Current);
+                reader.BaseStream.Seek(Enum.GetValues(typeof(VehicleNeonLight)).Length * 2, SeekOrigin.Current);
+                reader.BaseStream.Seek(Enum.GetValues(typeof(VehicleModType)).Length * 5, SeekOrigin.Current);
                 reader.BaseStream.Seek(doorsAmount * 10, SeekOrigin.Current);
                 for (int i = 0; i < occupantsAmount; i++)
                 {
@@ -494,7 +485,6 @@ namespace GtaVStateSaver
             vehicle.BodyHealth = reader.ReadSingle();
             vehicle.Clutch = reader.ReadSingle();
             vehicle.CurrentGear = reader.ReadInt32();
-            vehicle.CurrentRPM = reader.ReadInt32();
             vehicle.DirtLevel = reader.ReadSingle();
             vehicle.EngineHealth = reader.ReadSingle();
             vehicle.FuelLevel = reader.ReadSingle();
@@ -542,22 +532,19 @@ namespace GtaVStateSaver
             vehicle.Mods.WheelType = (VehicleWheelType)reader.ReadInt32();
             vehicle.Mods.WindowTint = (VehicleWindowTint)reader.ReadInt32();
 
-            if (shouldReadMods)
+            vehicle.Mods.InstallModKit();
+            foreach (VehicleNeonLight neonLight in Enum.GetValues(typeof(VehicleNeonLight)))
             {
-                vehicle.Mods.InstallModKit();
-                foreach (VehicleNeonLight neonLight in Enum.GetValues(typeof(VehicleNeonLight)))
-                {
-                    var hasNeonLight = reader.ReadBoolean();
-                    var isNeonLightOn = reader.ReadBoolean();
-                    if (hasNeonLight && isNeonLightOn)
-                        vehicle.Mods.SetNeonLightsOn(neonLight, true);
-                }
+                var hasNeonLight = reader.ReadBoolean();
+                var isNeonLightOn = reader.ReadBoolean();
+                if (hasNeonLight && isNeonLightOn)
+                    vehicle.Mods.SetNeonLightsOn(neonLight, true);
+            }
 
-                foreach (VehicleModType modType in Enum.GetValues(typeof(VehicleModType)))
-                {
-                    vehicle.Mods[modType].Variation = reader.ReadBoolean();
-                    vehicle.Mods[modType].Index = reader.ReadInt32();
-                }
+            foreach (VehicleModType modType in Enum.GetValues(typeof(VehicleModType)))
+            {
+                vehicle.Mods[modType].Variation = reader.ReadBoolean();
+                vehicle.Mods[modType].Index = reader.ReadInt32();
             }
 
             for (int i = 0; i < doorsAmount; i++)
