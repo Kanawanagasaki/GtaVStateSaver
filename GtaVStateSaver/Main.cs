@@ -19,6 +19,8 @@ namespace GtaVStateSaver
     {
         private const string SAVE_FILE = "scripts/GtaVStateSaver.bin";
         private const string SETTINGS_FILE = "scripts/GtaVStateSaver.ini";
+        private const string LOGS_FILE = "scripts/GtaVStateSaver.log";
+        private const string FILE_PREFIX = "GtaVStateSaver.V1";
 
         private State _state = null;
 
@@ -67,53 +69,70 @@ namespace GtaVStateSaver
 
         private void OnTick(object sender, EventArgs e)
         {
-            bool isSavePressed = _saveKB.All(x => Game.IsKeyPressed(x));
-            bool isLoadPressed = _loadKB.All(x => Game.IsKeyPressed(x));
-
-            bool isSavePriority = _loadKB.Length < _saveKB.Length;
-            if (isSavePressed && isLoadPressed)
+            try
             {
-                if (isSavePriority)
-                    isLoadPressed = false;
-                else isSavePressed = false;
-            }
+                bool isSavePressed = _saveKB.All(x => Game.IsKeyPressed(x));
+                bool isLoadPressed = _loadKB.All(x => Game.IsKeyPressed(x));
 
-            if (isSavePressed || isLoadPressed)
-            {
-                if (!_isKeyPressed)
+                bool isSavePriority = _loadKB.Length < _saveKB.Length;
+                if (isSavePressed && isLoadPressed)
                 {
-                    if (isSavePressed)
+                    if (isSavePriority)
+                        isLoadPressed = false;
+                    else isSavePressed = false;
+                }
+
+                if (isSavePressed || isLoadPressed)
+                {
+                    if (!_isKeyPressed)
                     {
-                        if (_state == null)
-                            _state = new State();
-
-                        _state.Save();
-
-                        using (var fileStream = File.OpenWrite(SAVE_FILE))
-                        using (var writer = new BinaryWriter(fileStream))
-                            _state.Write(writer);
-                    }
-                    else if (isLoadPressed)
-                    {
-                        if (!File.Exists(SAVE_FILE))
-                            return;
-
-                        if (_state == null)
+                        if (isSavePressed)
                         {
-                            _state = new State();
-                            using (var fileStream = File.OpenRead(SAVE_FILE))
-                            using (var reader = new BinaryReader(fileStream))
-                                _state.Read(reader);
+                            if (_state == null)
+                                _state = new State();
+
+                            _state.Save();
+
+                            using (var fileStream = File.OpenWrite(SAVE_FILE))
+                            using (var writer = new BinaryWriter(fileStream))
+                            {
+                                writer.Write(FILE_PREFIX);
+                                _state.Write(writer);
+                            }
+                        }
+                        else if (isLoadPressed)
+                        {
+                            if (!File.Exists(SAVE_FILE))
+                                return;
+
+                            if (_state == null)
+                            {
+                                using (var fileStream = File.OpenRead(SAVE_FILE))
+                                using (var reader = new BinaryReader(fileStream))
+                                {
+                                    var prefix = reader.ReadString();
+                                    if (prefix != FILE_PREFIX)
+                                        return;
+
+                                    _state = new State();
+                                    _state.Read(reader);
+                                }
+                            }
+
+                            _state.Load();
                         }
 
-                        _state.Load();
+                        _isKeyPressed = true;
                     }
-
-                    _isKeyPressed = true;
                 }
+                else if (_isKeyPressed)
+                    _isKeyPressed = false;
             }
-            else if (_isKeyPressed)
-                _isKeyPressed = false;
+            catch (Exception ex)
+            {
+                File.AppendAllText(LOGS_FILE, ex.Message);
+                File.AppendAllText(LOGS_FILE, ex.StackTrace);
+            }
         }
     }
 }
